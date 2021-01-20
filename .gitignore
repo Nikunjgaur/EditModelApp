@@ -1,0 +1,9 @@
+/.vs
+bin/x64
+bin/Release
+bin/Debug
+bin/database
+obj
+
+
+
