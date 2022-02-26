@@ -33,7 +33,7 @@ namespace EditModelApp
             this.MinimizeBox = false;
 
             this.Icon = new Icon(GlobalItems.icon);
-            this.Text = "Select Menu .";
+            this.Text = "Menu Page v 2.0";
 
             if (File.Exists(GlobalItems.password_json))
             {
@@ -49,48 +49,64 @@ namespace EditModelApp
         {
 
 
-            if (Application.OpenForms["LogInForEdirPage"] == null)
+            if (Application.OpenForms["ModelDataInput"] == null)
             {
-                new LogInForEdirPage().ShowDialog();
-
-                if (GlobalItems.edit_page_access == false)
-                {
-                    return;
-                }
-                else
-                {
-
-                    if (Application.OpenForms["ModelDataInput"] == null)
-                    {
-                        new ModelDataInput().ShowDialog();
-                    }
-
-                }
-
+                new ModelDataInput().ShowDialog();
             }
+
+
+            //if (Application.OpenForms["LogInForEdirPage"] == null)
+            //{
+            //    new LogInForEdirPage().ShowDialog();
+
+            //    if (GlobalItems.edit_page_access == false)
+            //    {
+            //        return;
+            //    }
+            //    else
+            //    {
+
+            //        if (Application.OpenForms["ModelDataInput"] == null)
+            //        {
+            //            new ModelDataInput().ShowDialog();
+            //        }
+
+            //    }
+
+            //}
         }
 
         private void btn_edit_model_Click(object sender, EventArgs e)
         {
-            if (Application.OpenForms["LogInForEdirPage"] == null)
+            //if (Application.OpenForms["LogInForEdirPage"] == null)
+            //{
+            //    new LogInForEdirPage().ShowDialog();
+
+            //    if (GlobalItems.edit_page_access == false)
+            //    {
+            //        return;
+            //    }
+            //    else
+            //    {
+
+            //        if (Application.OpenForms["CreateModelPage"] == null)
+            //        {
+            //            new ChargerVivo.CreateModels.CreateModelPage().Show();
+            //        }
+
+            //    }
+
+            //}
+
+            if (Application.OpenForms["CreateModelPage"] == null)
             {
-                new LogInForEdirPage().ShowDialog();
-
-                if (GlobalItems.edit_page_access == false)
-                {
-                    return;
-                }
-                else
-                {
-
-                    if (Application.OpenForms["CreateModelPage"] == null)
-                    {
-                        new ChargerVivo.CreateModels.CreateModelPage().Show();
-                    }
-
-                }
-
+                new ChargerVivo.CreateModels.CreateModelPage().Show();
             }
+
+
+
+
+
         }
 
         private void btn_system_cotroller_Click(object sender, EventArgs e)
@@ -131,5 +147,7 @@ namespace EditModelApp
                 new PageOne().ShowDialog();
             }
         }
+
+        
     }
 }

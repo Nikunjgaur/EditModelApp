@@ -40,7 +40,7 @@
             this.btn_create_model.BackColor = System.Drawing.Color.Blue;
             this.btn_create_model.Font = new System.Drawing.Font("Microsoft Sans Serif", 14.25F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.btn_create_model.ForeColor = System.Drawing.Color.Yellow;
-            this.btn_create_model.Location = new System.Drawing.Point(156, 86);
+            this.btn_create_model.Location = new System.Drawing.Point(156, 115);
             this.btn_create_model.Name = "btn_create_model";
             this.btn_create_model.Size = new System.Drawing.Size(202, 55);
             this.btn_create_model.TabIndex = 0;
@@ -53,7 +53,7 @@
             this.btn_edit_model.BackColor = System.Drawing.Color.Blue;
             this.btn_edit_model.Font = new System.Drawing.Font("Microsoft Sans Serif", 14.25F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.btn_edit_model.ForeColor = System.Drawing.Color.Yellow;
-            this.btn_edit_model.Location = new System.Drawing.Point(415, 86);
+            this.btn_edit_model.Location = new System.Drawing.Point(415, 115);
             this.btn_edit_model.Name = "btn_edit_model";
             this.btn_edit_model.Size = new System.Drawing.Size(184, 55);
             this.btn_edit_model.TabIndex = 1;
@@ -112,7 +112,7 @@
             this.Controls.Add(this.btn_edit_model);
             this.Controls.Add(this.btn_create_model);
             this.Name = "MenuPage";
-            this.Text = "MenuPage";
+            this.Text = "Menu Page v 2.0";
             this.Load += new System.EventHandler(this.MenuPage_Load);
             this.ResumeLayout(false);
 

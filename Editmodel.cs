@@ -32,7 +32,10 @@ namespace ChargerVivo.CreateModels
         List<Rectangle> _draw_rect_list = new List<Rectangle>();
         AlgoCpp.SalcomCpp _SalcomCpp = new AlgoCpp.SalcomCpp();
         Modal _Modal = new Modal();
+        PrintShift print_shiftVar=null;
+        PrintShift print_shiftVar_copy = null;
         CheckTextMatch _CheckTextMatch_test_algo_object = new CheckTextMatch();
+       // QrCodeReader _CheckQrCode_test_algo_object = new QrCodeReader();
         CheckClean _CheckClean_test_algo_object = new CheckClean();
         OcrReader _OcrReader_test_algo_object = new OcrReader();
         QrCodeReader _QrCodeReader_test_algo_object = new QrCodeReader();
@@ -41,11 +44,21 @@ namespace ChargerVivo.CreateModels
         Modal _Model_copy = null;
         private string model_name;
         Modal _model = null;
-        Pen _redPen = new Pen(Color.Red, 2);
+        
+        Pen _redPen = new Pen(Color.DodgerBlue, 2);
         Pen _greenPen = new Pen(Color.Green, 2);
         bool is_add_new_region = true;
+        bool _do_not_load_model = true;
+
         private void CreateModelPage_Load(object sender, EventArgs e)
         {
+            if (File.Exists(@"C:\Database\imageCurr.bmp"))
+            {
+                Bitmap bmpTemp =(Bitmap) Bitmap.FromFile(@"C:\\Database\\imageCurr.bmp");
+                _selected_image = bmpTemp.Clone(new Rectangle(0, 0, bmpTemp.Width, bmpTemp.Height), System.Drawing.Imaging.PixelFormat.Format24bppRgb);
+            }
+            enableDisableShiftParGroup(false);
+            _redPen.DashStyle = DashStyle.Dash;
             Console.WriteLine();
             Console.WriteLine();
             Console.WriteLine();
@@ -76,6 +89,7 @@ namespace ChargerVivo.CreateModels
                     cb_model_name.Items.Add(dir_info.Name);
                 }
             }
+      
             Console.WriteLine("Total folder count : " + total_folder_count);
             Console.WriteLine("Total Valid folder count : " + total_folder_count);
             cb_region_name.Enabled = false;
@@ -86,10 +100,39 @@ namespace ChargerVivo.CreateModels
             live_timer.Enabled = true;
             live_timer.Interval = 1000;
             live_timer.Start(); ;
+            if (cb_model_name.Items.Count > 0)
+            {
+                cb_model_name.SelectedIndex = 0;
+            }
 
         }
-        private void btn_test_code_Click(object sender, EventArgs e)
-        {
+        private void enableDisableShiftParGroup( bool show)
+        { if (show)
+            {
+                lbl_V_shiftTol.Visible = true;
+                lbl_H_shiftTol.Visible = true;
+                lblWidthTol.Visible = true;
+                lblHeightTol.Visible = true;
+                nudVshiftTol.Visible = true;
+                nudHshiftTol.Visible = true;
+                nudWidthTol.Visible = true;
+                nudHeightTol.Visible = true;
+
+            }
+            else
+            {
+                lbl_V_shiftTol.Visible = false;
+                lbl_H_shiftTol.Visible = false;
+                lblWidthTol.Visible = false;
+                lblHeightTol.Visible = false;
+                nudVshiftTol.Visible = false;
+                nudHshiftTol.Visible = false;
+                nudWidthTol.Visible = false;
+                nudHeightTol.Visible = false;
+
+
+            }
+
         }
         Boolean mouseClicked;
         Point startPoint = new Point();
@@ -104,7 +147,7 @@ namespace ChargerVivo.CreateModels
         private bool _once = false;
         private void picboxOne_Paint(object sender, PaintEventArgs e)
         {
-            drawLine = new Pen(Color.Red,2);
+            drawLine = new Pen(Color.DodgerBlue,1);
             
             drawLine.DashStyle = DashStyle.Dash;
             e.Graphics.DrawRectangle(drawLine, rectCropArea);
@@ -139,7 +182,7 @@ namespace ChargerVivo.CreateModels
 
                     }
                 }
-                foreach (CheckClean tc in _model.CheckClean)
+                foreach (CheckClean tc in _model.CheckClean) //added
                 {
                     if (tc.regionName.Equals(cb_region_name.Text))
                     {
@@ -170,7 +213,41 @@ namespace ChargerVivo.CreateModels
                     }
                 }
 
+                foreach (QrCodeReader tc in _model.QrCodeReader)
+                {
+                    if (tc.regionName.Equals(cb_region_name.Text))
+                    {
+                        Bitmap img = null;
+                        if (File.Exists(_model.template_image_path_bigger))
+                        {
+                            using (var bmpTemp = new Bitmap(_model.template_image_path_bigger))
+                            {
+                                img = new Bitmap(bmpTemp);
+                            }
+                            // picboxOne.Image = img;
+                        }
+                        using (var graphics = Graphics.FromImage(img))
+                        {
+                            //Rectangle _rectangle = new Rectangle(
+                            //    (int)tc.PointAX + (int)_model.TemplateCoordinate.ElementAt(1).PointAX,
+                            //    (int)tc.PointAY + (int)_model.TemplateCoordinate.ElementAt(1).PointAY,
+                            //    (int)(tc.PointBX),
+                            //    (int)tc.PointBY);
+                            Rectangle _rectangle = new Rectangle(
+                                (int)tc.PointAX,
+                                (int)tc.PointAY,
+                                (int)(tc.PointBX),
+                                (int)tc.PointBY);
+
+                            e.Graphics.DrawRectangle(_redPen, _rectangle);
+                        }
+                        Console.WriteLine("QR code reader tool found  x  " + tc.PointAX.ToString() + "  y:" + tc.PointAY.ToString() + " width:" + tc.PointBX.ToString());
+                        tools_name = "QrCodeReader";
+                    }
+                }
+
             }
+
 
 
 
@@ -225,7 +302,12 @@ namespace ChargerVivo.CreateModels
 
         }//picboxOne_Paint
         private void picboxOne_MouseDown(object sender, MouseEventArgs e)
-        {
+        {if (resultImageonDisplay)
+            {
+                MessageBox.Show("Click on select ROI if you want to change tool region", "Tip ");
+                return;
+            }
+
             if (tools_name.Equals(""))
             {
                 MessageBox.Show("Please Select Either Tools Or Region Name " + " ", "Alert",
@@ -290,7 +372,7 @@ namespace ChargerVivo.CreateModels
         int template_count = 0;
         private void picboxOne_MouseUp(object sender, MouseEventArgs e)
         {
-            if (MessageBox.Show("Is Croped Correct ? ", "Alert Message ", MessageBoxButtons.YesNo) == DialogResult.Yes == false)
+            if (MessageBox.Show("This operation will change current region. "+ Environment.NewLine+"Do you want to continue? ", "Alert Message ", MessageBoxButtons.YesNo) == DialogResult.Yes == false)
             {
                 mouseClicked = false;
                 return;
@@ -308,7 +390,7 @@ namespace ChargerVivo.CreateModels
             {
                 if (rectCropArea.Width == 0 || rectCropArea.Height == 0)
                 {
-                    MessageBox.Show("not a valid points ");
+                    MessageBox.Show("Invalid region. Please reselect.");
                     return;
                 }
                 picCroppedPicture.Refresh();
@@ -316,12 +398,12 @@ namespace ChargerVivo.CreateModels
                 {
                     if (rectCropArea.Width == 0 || rectCropArea.Height == 0)
                     {
-                        MessageBox.Show("not a valid points ");
+                        MessageBox.Show("Invalid region. Please reselect.");
                         return;
                     }
                     picCroppedPicture.Refresh();
                     targetBitmap = new Bitmap(rectCropArea.Width, rectCropArea.Height, System.Drawing.Imaging.PixelFormat.Format24bppRgb);
-                    Bitmap sourceBitmap = new Bitmap(picboxOne.Image, picboxOne.Width, picboxOne.Height);
+                    Bitmap sourceBitmap = new Bitmap(cropSource, picboxOne.Width, picboxOne.Height);
                     Graphics g = Graphics.FromImage(targetBitmap);
                     g.InterpolationMode = InterpolationMode.HighQualityBicubic;
                     g.PixelOffsetMode = PixelOffsetMode.HighQuality;
@@ -354,6 +436,17 @@ namespace ChargerVivo.CreateModels
                         targetBitmap.Save(template_path);
                         _CheckClean_test_algo_object.TemplateImagePath = template_path;
                     }
+                    if (tools_name.Equals("QrCodeReader") && is_add_new_region == true)
+                    {
+                        _QrCodeReader_test_algo_object.PointAX = (rectCropArea.X);
+                        _QrCodeReader_test_algo_object.PointAY = (rectCropArea.Y);
+                        _QrCodeReader_test_algo_object.PointBX = (rectCropArea.Width);
+                        _QrCodeReader_test_algo_object.PointBY = (rectCropArea.Height);
+                        string template_path = GlobalItems.data_base_folder + _model.ModelName + @"\" + DateTime.Now.ToString("HH_mm_ss_tt") + ".bmp";
+                        targetBitmap.Save(template_path);
+                        _QrCodeReader_test_algo_object.TemplateImagePath = template_path;
+                    }
+                    
                 }//if (picboxOne.Image != null)
             }
             else
@@ -363,7 +456,11 @@ namespace ChargerVivo.CreateModels
             }
         }//mpuse up 
         private void btn_save_model_Click(object sender, EventArgs e)
-        {
+        {if (cb_check_text_match.Checked == true || cb_checkclean.Checked == true)
+            { _save_new_tools = true; }
+            else
+            { _save_new_tools = false; }
+            _model = _Model_copy; 
             if (_save_new_tools == true)
             {
                 //InputDialog dialog = new InputDialog("Region Input Dialog  ", " Region Name ", "  ");
@@ -380,9 +477,12 @@ namespace ChargerVivo.CreateModels
                     _CheckTextMatch_test_algo_object.HeighTolerance = nm_p.Value;
                     _CheckTextMatch_test_algo_object.WidthTolerance = nm_q.Value;
                     _CheckTextMatch_test_algo_object.AreaTolerance = nm_r.Value;
-
-
-                    _CheckTextMatch_test_algo_object.regionName = "Region_"+(_Model_copy.CheckTextMatch.Count()+1)+"_";
+                    _CheckTextMatch_test_algo_object.shiftXTol = nudHshiftTol.Value;
+                    _CheckTextMatch_test_algo_object.shiftYTol = nudVshiftTol.Value;
+                    _CheckTextMatch_test_algo_object.fontHeightTol = nudHeightTol.Value;
+                    _CheckTextMatch_test_algo_object.fontWidthTol = nudWidthTol.Value;
+                    _CheckTextMatch_test_algo_object.TemplateImagePath = _CheckTextMatch_test_algo_object.TemplateImagePath;
+                    _CheckTextMatch_test_algo_object.regionName = "Region_" + (_Model_copy.CheckTextMatch.Count() + 2);
                     _Model_copy.CheckTextMatch.Add(_CheckTextMatch_test_algo_object);
                 }
                 if (tools_name.Equals("CheckClean"))
@@ -393,27 +493,46 @@ namespace ChargerVivo.CreateModels
                     _CheckClean_test_algo_object.WidthTolerance = nm_p.Value;
                     _CheckClean_test_algo_object.AreaTolerance = nm_q.Value;
                     _CheckClean_test_algo_object.Threshold = nm_r.Value;
-                    _CheckClean_test_algo_object.regionName = "Region_" + (_Model_copy.CheckClean.Count() + 1) + "_"; ;
-                    _Model_copy.CheckTextMatch.Add(_CheckTextMatch_test_algo_object);
+                    _CheckClean_test_algo_object.regionName = "Region_C" + (_Model_copy.CheckClean.Count() + 2);
+                    //_Model_copy.CheckTextMatch.Add(_CheckTextMatch_test_algo_object);
                     _Model_copy.CheckClean.Add(_CheckClean_test_algo_object);
 
 
                 }
-            }// if (_save_new_tools == true)
-            else
-            {
-                string region_name = cb_region_name.Text;
-                for (int i = 0; i < _model.CheckTextMatch.Count(); i++)
-                {
-                    CheckTextMatch tc = _model.CheckTextMatch.ElementAt(i);
-                    if (tc.regionName.Equals(region_name))
-                    {
-                        _Model_copy.CheckTextMatch.ElementAt(i).Threshold = nm_m.Value;
-                        _Model_copy.CheckTextMatch.ElementAt(i).MatchScore = nm_n.Value;
-                        _Model_copy.CheckTextMatch.ElementAt(i).AvgColor = nm_o.Value;
-                        _Model_copy.CheckTextMatch.ElementAt(i).HeighTolerance = nm_p.Value;
-                        _Model_copy.CheckTextMatch.ElementAt(i).WidthTolerance = nm_q.Value;
-                        _Model_copy.CheckTextMatch.ElementAt(i).AreaTolerance = nm_r.Value;
+                string json_path = GlobalItems.data_base_folder + @"\" + model_name + @"\_data.json";
+                string json = JsonConvert.SerializeObject(_Model_copy, Formatting.Indented);
+                File.WriteAllText(json_path, json);
+                ServiceUtils.Log("updated file path  .......... ");
+                ServiceUtils.Log(json_path);
+                cb_test_image.Checked = false;
+                cb_region_name.Items.Remove(cb_region_name.SelectedItem);
+                cb_region_name.Items.Clear();
+                after_upadte();
+                btn_save_model.Enabled = false;
+
+                MessageBox.Show("Model Updated  " + ". ", " Notification ?",
+                MessageBoxButtons.OK, MessageBoxIcon.Information);
+                cb_test_image.Checked = true;
+            }
+            //if (_save_new_tools == true)
+           else
+           {
+                        string region_name = cb_region_name.Text;
+                        for (int i = 0; i < _model.CheckTextMatch.Count(); i++)
+                        {
+                            CheckTextMatch tc = _model.CheckTextMatch.ElementAt(i);
+                            if (tc.regionName.Equals(region_name))
+                            {
+                                _Model_copy.CheckTextMatch.ElementAt(i).Threshold = nm_m.Value;
+                                _Model_copy.CheckTextMatch.ElementAt(i).MatchScore = nm_n.Value;
+                                _Model_copy.CheckTextMatch.ElementAt(i).AvgColor = nm_o.Value;
+                                _Model_copy.CheckTextMatch.ElementAt(i).HeighTolerance = nm_p.Value;
+                                _Model_copy.CheckTextMatch.ElementAt(i).WidthTolerance = nm_q.Value;
+                                _Model_copy.CheckTextMatch.ElementAt(i).AreaTolerance = nm_r.Value;
+                        _Model_copy.CheckTextMatch.ElementAt(i).shiftXTol = nudHshiftTol.Value;
+                        _Model_copy.CheckTextMatch.ElementAt(i).shiftYTol = nudVshiftTol.Value;
+                        _Model_copy.CheckTextMatch.ElementAt(i).fontHeightTol = nudHeightTol.Value;
+                        _Model_copy.CheckTextMatch.ElementAt(i).fontWidthTol = nudWidthTol.Value;
                         //_CheckTextMatch_test_algo_object.Threshold = nm_m.Value;
                         //_CheckTextMatch_test_algo_object.MatchScore = nm_n.Value;
                         //_CheckTextMatch_test_algo_object.AvgColor = nm_o.Value;
@@ -422,47 +541,96 @@ namespace ChargerVivo.CreateModels
                         //_CheckTextMatch_test_algo_object.AreaTolerance = nm_r.Value;
                         //_CheckTextMatch_test_algo_object.TemplateImagePath = tc.TemplateImagePath;
                         _Model_copy.CheckTextMatch.ElementAt(i).TemplateImagePath = _CheckTextMatch_test_algo_object.TemplateImagePath;
-                        if (_CheckTextMatch_test_algo_object.PointAX != 0)
-                        {
-                            _Model_copy.CheckTextMatch.ElementAt(i).PointAX = _CheckTextMatch_test_algo_object.PointAX;
-                            _Model_copy.CheckTextMatch.ElementAt(i).PointAY = _CheckTextMatch_test_algo_object.PointAY;
-                            _Model_copy.CheckTextMatch.ElementAt(i).PointBX = _CheckTextMatch_test_algo_object.PointBX;
-                            _Model_copy.CheckTextMatch.ElementAt(i).PointBY = _CheckTextMatch_test_algo_object.PointBY;
+                                if (_CheckTextMatch_test_algo_object.PointAX != 0)
+                                {
+                                    _Model_copy.CheckTextMatch.ElementAt(i).PointAX = _CheckTextMatch_test_algo_object.PointAX;
+                                    _Model_copy.CheckTextMatch.ElementAt(i).PointAY = _CheckTextMatch_test_algo_object.PointAY;
+                                    _Model_copy.CheckTextMatch.ElementAt(i).PointBX = _CheckTextMatch_test_algo_object.PointBX;
+                                    _Model_copy.CheckTextMatch.ElementAt(i).PointBY = _CheckTextMatch_test_algo_object.PointBY;
+                                }
+                                //  _Model_copy.CheckTextMatch.ElementAt(i).Threshold = _CheckTextMatch_test_algo_object.Threshold;
+                            }
                         }
-                        //  _Model_copy.CheckTextMatch.ElementAt(i).Threshold = _CheckTextMatch_test_algo_object.Threshold;
-                    }
-                }
-                for (int i = 0; i < _model.CheckClean.Count(); i++)
-                {
-                    CheckClean tc = _model.CheckClean.ElementAt(i);
-                    if (tc.regionName.Equals(region_name))
-                    {
-                        if (tc.regionName.Equals(region_name))
+                        for (int i = 0; i < _model.CheckClean.Count(); i++)
                         {
-                            _Model_copy.CheckClean.ElementAt(i).Avg_color = nm_m.Value;
-                            _Model_copy.CheckClean.ElementAt(i).Step_Size = nm_n.Value;
-                            _Model_copy.CheckClean.ElementAt(i).HeighTolerance = nm_o.Value;
-                            _Model_copy.CheckClean.ElementAt(i).WidthTolerance = nm_p.Value;
-                            _Model_copy.CheckClean.ElementAt(i).AreaTolerance = nm_q.Value;
-                            _Model_copy.CheckClean.ElementAt(i).Threshold = nm_r.Value;
+                            CheckClean tc = _model.CheckClean.ElementAt(i);
+                            if (tc.regionName.Equals(region_name))
+                            {
+                                if (tc.regionName.Equals(region_name))
+                                {
+                                    _Model_copy.CheckClean.ElementAt(i).Avg_color = nm_m.Value;
+                                    _Model_copy.CheckClean.ElementAt(i).Step_Size = nm_n.Value;
+                                    _Model_copy.CheckClean.ElementAt(i).HeighTolerance = nm_o.Value;
+                                    _Model_copy.CheckClean.ElementAt(i).WidthTolerance = nm_p.Value;
+                                    _Model_copy.CheckClean.ElementAt(i).AreaTolerance = nm_q.Value;
+                                    _Model_copy.CheckClean.ElementAt(i).Threshold = nm_r.Value;
+
+                                    _Model_copy.CheckClean.ElementAt(i).TemplateImagePath = _CheckClean_test_algo_object.TemplateImagePath;
+                                    if (_CheckClean_test_algo_object.PointAX != 0)
+                                    {
+                                        _Model_copy.CheckClean.ElementAt(i).PointAX = _CheckClean_test_algo_object.PointAX;
+                                        _Model_copy.CheckClean.ElementAt(i).PointAY = _CheckClean_test_algo_object.PointAY;
+                                        _Model_copy.CheckClean.ElementAt(i).PointBX = _CheckClean_test_algo_object.PointBX;
+                                        _Model_copy.CheckClean.ElementAt(i).PointBY = _CheckClean_test_algo_object.PointBY;
+                                    }
+                            
+
+                                }
+                            }
                         }
-                    }
-                }
+                        for (int i = 0; i < _model.QrCodeReader.Count(); i++)
+                        {
+                            QrCodeReader tc = _model.QrCodeReader.ElementAt(i);
+                            if (tc.regionName.Equals(region_name))
+                            {
+                                if (tc.regionName.Equals(region_name))
+                                {
+                                    //_Model_copy.CheckClean.ElementAt(i).Avg_color = nm_m.Value;
+                                    //_Model_copy.CheckClean.ElementAt(i).Step_Size = nm_n.Value;
+                                    //_Model_copy.CheckClean.ElementAt(i).HeighTolerance = nm_o.Value;
+                                    //_Model_copy.CheckClean.ElementAt(i).WidthTolerance = nm_p.Value;
+                                    //_Model_copy.CheckClean.ElementAt(i).AreaTolerance = nm_q.Value;
+                                    //_Model_copy.CheckClean.ElementAt(i).Threshold = nm_r.Value;
+
+                                    _Model_copy.QrCodeReader.ElementAt(i).TemplateImagePath = _QrCodeReader_test_algo_object.TemplateImagePath;
+                                    if (_QrCodeReader_test_algo_object.PointAX != 0)
+                                    {
+                                        _Model_copy.QrCodeReader.ElementAt(i).PointAX = _QrCodeReader_test_algo_object.PointAX;
+                                        _Model_copy.QrCodeReader.ElementAt(i).PointAY = _QrCodeReader_test_algo_object.PointAY;
+                                        _Model_copy.QrCodeReader.ElementAt(i).PointBX = _QrCodeReader_test_algo_object.PointBX;
+                                        _Model_copy.QrCodeReader.ElementAt(i).PointBY = _QrCodeReader_test_algo_object.PointBY;
+                                    }
+
+
+                                }
+                            }
+                        }
+                string json_path = GlobalItems.data_base_folder + @"\" + model_name + @"\_data.json";
+                string json = JsonConvert.SerializeObject(_Model_copy, Formatting.Indented);
+                File.WriteAllText(json_path, json);
+                ServiceUtils.Log("updated file path  .......... ");
+                ServiceUtils.Log(json_path);
+                //cb_test_image.Checked = false;
+                //cb_region_name.Items.Remove(cb_region_name.SelectedItem);
+                //cb_region_name.Items.Clear();
+                //after_upadte();
+                //btn_save_model.Enabled = false;
+
+                MessageBox.Show("Model Updated  " + ". ", " Notification ?",
+                MessageBoxButtons.OK, MessageBoxIcon.Information);
+                //cb_test_image.Checked = true;
+                btn_test_algo.Enabled = true;
+                btn_save_model.Enabled = false;
             }
-            string json_path = GlobalItems.data_base_folder + @"\" + model_name + @"\_data.json";
-            string json = JsonConvert.SerializeObject(_Model_copy, Formatting.Indented);
-            File.WriteAllText(json_path, json);
-            ServiceUtils.Log("updated file path  .......... ");
-            ServiceUtils.Log(json_path);
-            cb_region_name.Items.Remove(cb_region_name.SelectedItem);
-            cb_region_name.Items.Clear();
-            after_upadte();
-            btn_save_model.Enabled = false;
 
-            MessageBox.Show("Model Updated  " + ". ", " Notification ?",
-            MessageBoxButtons.OK, MessageBoxIcon.Information);
-
-
+            if (chkUpdateShiftAll.Checked)
+            {
+                print_shiftVar.PrintShiftAlongX = (int)nudPrintShiftAllX.Value;
+                print_shiftVar.PrintShiftAlongY = (int) nudPrintShiftAllY.Value;
+                string newPath_PrintShift = GlobalItems.data_base_folder + @"\" + model_name + @"\_PrintShift.json";
+                string json_PrintShift = JsonConvert.SerializeObject(print_shiftVar, Formatting.Indented);
+                File.WriteAllText(newPath_PrintShift, json_PrintShift);
+            }
         }
         int x_value = 0;
         int y_value = 0;
@@ -531,6 +699,10 @@ namespace ChargerVivo.CreateModels
                 _CheckTextMatch_test_algo_object.HeighTolerance = nm_p.Value;
                 _CheckTextMatch_test_algo_object.WidthTolerance = nm_q.Value;
                 _CheckTextMatch_test_algo_object.AreaTolerance = nm_r.Value;
+                _CheckTextMatch_test_algo_object.shiftXTol = nudHshiftTol.Value;
+                _CheckTextMatch_test_algo_object.shiftYTol = nudVshiftTol.Value;
+                _CheckTextMatch_test_algo_object.fontHeightTol = nudHeightTol.Value;
+                _CheckTextMatch_test_algo_object.fontWidthTol = nudWidthTol.Value;
                 _CheckTextMatch_test_algo_object.regionName = "test algo ";
                 ServiceUtils.Log(" Sending CheckTextMatch   Parameter To C++ ");
                 foreach (PropertyDescriptor descriptor in TypeDescriptor.GetProperties(_CheckTextMatch_test_algo_object))
@@ -550,9 +722,9 @@ namespace ChargerVivo.CreateModels
                     object value = descriptor.GetValue(CheckTextMatch_responce_obj);
                     ServiceUtils.Log(" name   " + name + " values " + value);
                 }
-                nm_n.Value = decimal.Parse(CheckTextMatch_responce_obj.MatchScore.ToString());
+                //nm_n.Value = decimal.Parse(CheckTextMatch_responce_obj.MatchScore.ToString());  //feb
                 nm_o.Value = decimal.Parse(CheckTextMatch_responce_obj.AvgColor.ToString());
-                _CheckTextMatch_test_algo_object.MatchScore = nm_n.Value;
+               // _CheckTextMatch_test_algo_object.MatchScore = nm_n.Value;
                 _CheckTextMatch_test_algo_object.AvgColor = nm_o.Value;
                 string image = _SalcomCpp.get_thresholded_image(_base64);
                 picBoxThresholdImage.Image = ServiceUtils.Base64StringToBitmap(image);
@@ -564,6 +736,7 @@ namespace ChargerVivo.CreateModels
 
                 if(_CheckClean_test_algo_object.TemplateImagePath==null)
                 {
+                    Console.WriteLine("returning check clean:: path is null");
                     return;
                 }
 
@@ -642,11 +815,11 @@ namespace ChargerVivo.CreateModels
         }
         private void CreateModelPage_FormClosing(object sender, FormClosingEventArgs e)
         {
-            if (exit_button == false)
-            {
-                MessageBox.Show("PLEASE USE EXIT BUTTON " + " . ", "Alert ?",
-                MessageBoxButtons.OK, MessageBoxIcon.Information);
-            }
+            ////if (exit_button == false)
+            ////{
+            ////    MessageBox.Show("PLEASE USE EXIT BUTTON " + " . ", "Alert !",
+            ////    MessageBoxButtons.OK, MessageBoxIcon.Information);
+            ////}
         }
         private void cv_thresholsimage_CheckedChanged(object sender, EventArgs e)
         {
@@ -674,7 +847,14 @@ namespace ChargerVivo.CreateModels
             //        return;
             //    }
             //}
-            //ServiceUtils.Log("Log in succussfull ....... ");
+
+            if(_do_not_load_model==true)
+            {
+                _do_not_load_model = false;
+                return;
+            }
+
+            ServiceUtils.Log("Log in succussfull ....... ");
 
             tools_option_gb.Enabled = true;
             #region   show_ui_correcte
@@ -701,10 +881,10 @@ namespace ChargerVivo.CreateModels
             nm_p.Visible = true;
             nm_q.Visible = true;
             nm_r.Visible = true;
-            nm_m.ReadOnly = true;
-            nm_m.Increment = 0;
+           // nm_m.ReadOnly = true;
+            nm_m.Increment = 1;
             nm_n.ReadOnly = false;
-            //nm_n.Increment = 2;
+            nm_n.Increment = 1;
             nm_o.ReadOnly = false;
             //nm_o.Increment = 2;
             //nm_p.ReadOnly = true;
@@ -719,9 +899,18 @@ namespace ChargerVivo.CreateModels
             cb_region_name.Items.Clear();
             model_name = cb_model_name.Text;
             string json_path = GlobalItems.data_base_folder + @"\" + model_name + @"\_data.json";
+            //--
+            string newPath_PrintShift = GlobalItems.data_base_folder + @"\" + model_name + @"\_PrintShift.json";
+            string printShiftSer = File.ReadAllText(newPath_PrintShift);
+            print_shiftVar = JsonConvert.DeserializeObject<PrintShift>(printShiftSer);
+            print_shiftVar_copy = JsonConvert.DeserializeObject<PrintShift>(printShiftSer);
+            nudPrintShiftAllX.Value = print_shiftVar.PrintShiftAlongX;
+            nudPrintShiftAllY.Value = print_shiftVar.PrintShiftAlongY;
+            //--
             string model_data = File.ReadAllText(json_path);
             _model = JsonConvert.DeserializeObject<Modal>(model_data);
             _Model_copy = JsonConvert.DeserializeObject<Modal>(model_data);
+            //_model = _Model_copy;
             string original_image_path = GlobalItems.data_base_folder + model_name + @"\original.bmp";
             //if (File.Exists(original_image_path))
             //{
@@ -808,7 +997,7 @@ namespace ChargerVivo.CreateModels
                 //      (int)tc.PointBY);
                 //    graphics.DrawRectangle(_redPen, _rectangle);
                 //}
-                // cb_region_name.Items.Add(tc.regionName);
+                 cb_region_name.Items.Add(tc.regionName);
             }
             foreach (OcrReader tc in _model.OcrReader)
             {
@@ -823,12 +1012,23 @@ namespace ChargerVivo.CreateModels
                 //}
                 // cb_region_name.Items.Add(tc.regionName);
             }
+            foreach (CheckPins.PinRegion pr in _model.checkPins.pinRegions)
+            {
+                cb_region_name.Items.Add(pr.regionName);
+
+            }
+
+
             cb_region_name.Enabled = true;
+            if (cb_region_name.Items.Count > 0)
+                cb_region_name.SelectedIndex = 0;
             _once = true;
         }
         string tools_name = "";
         private void cb_region_name_SelectedIndexChanged(object sender, EventArgs e)
         {
+            picCroppedPicture.Visible = true;
+            cb_test_image.Checked = false;
             string region_name = cb_region_name.Text;
             tools_option_gb.Visible = true;
             btn_test_algo.Enabled = true;
@@ -840,9 +1040,9 @@ namespace ChargerVivo.CreateModels
 
 
 
+            _model = _Model_copy;
 
-
-            foreach (CheckTextMatch tc in _model.CheckTextMatch)
+            foreach (CheckTextMatch tc in _Model_copy.CheckTextMatch)
             {
                 if (tc.regionName.Equals(region_name))
                 {
@@ -869,7 +1069,37 @@ namespace ChargerVivo.CreateModels
                             (int)tc.PointBY);
                         //graphics.DrawRectangle(_redPen, _rectangle);
                     }
+                    if (File.Exists(tc.TemplateImagePath))
+                    {
+                        using (var bmpTemp = new Bitmap(tc.TemplateImagePath))
+                        {
+                            img = new Bitmap(bmpTemp);
+                        }
+                        picCroppedPicture.Image = img;
+                    }
                     #region  comming from ocr reader 
+                    _CheckTextMatch_test_algo_object.TemplateImagePath = tc.TemplateImagePath;
+                    nm_m.Value = tc.Threshold;
+                    nm_n.Value = tc.MatchScore;
+                    nm_o.Value = tc.AvgColor;
+                    nm_p.Value = tc.HeighTolerance;
+                    nm_q.Value = tc.WidthTolerance;
+                    nm_r.Value = tc.AreaTolerance;
+                    nudHshiftTol.Value=tc.shiftXTol;
+                     nudVshiftTol.Value=tc.shiftYTol;
+                    nudHeightTol.Value=tc.fontHeightTol;
+                   nudWidthTol.Value=tc.fontWidthTol;
+
+                    _CheckTextMatch_test_algo_object.Threshold = nm_m.Value;
+                    _CheckTextMatch_test_algo_object.MatchScore = nm_n.Value;
+                    _CheckTextMatch_test_algo_object.AvgColor = nm_o.Value;
+                    _CheckTextMatch_test_algo_object.HeighTolerance = nm_p.Value;
+                    _CheckTextMatch_test_algo_object.WidthTolerance = nm_q.Value;
+                    _CheckTextMatch_test_algo_object.AreaTolerance = nm_r.Value;
+                    _CheckTextMatch_test_algo_object.shiftXTol = nudHshiftTol.Value;
+                    _CheckTextMatch_test_algo_object.shiftYTol = nudVshiftTol.Value;
+                    _CheckTextMatch_test_algo_object.fontHeightTol = nudHeightTol.Value;
+                    _CheckTextMatch_test_algo_object.fontWidthTol = nudWidthTol.Value;
                     lbl_g.Visible = false;
                     lbl_rect_v.Visible = false;
                     lbl_h.Visible = false;
@@ -892,8 +1122,9 @@ namespace ChargerVivo.CreateModels
                     nm_m.Visible = true;
                     nm_n.Visible = true;
                     nm_o.Visible = true;
-                    nm_n.ReadOnly = true;
-                    nm_n.Increment = 0;
+                    nm_m.Increment = 1;
+                    // nm_n.ReadOnly = true;
+                    nm_n.Increment = 1;
                     nm_o.ReadOnly = true;
                     nm_o.Increment = 0;
                     nm_p.Visible = true;
@@ -904,7 +1135,7 @@ namespace ChargerVivo.CreateModels
                     #endregion   ocr region 
                     tools_option_gb.Visible = true;
                     lbl_a.Text = "Threshold : ";
-                    lbl_b.Text = "Match Score : ";
+                    lbl_b.Text = "Thickness : ";
                     lbl_c.Text = "Avg Color : ";
                     lbl_d.Text = "High Tolerance : ";
                     lbl_e.Text = "Width Tolerance : ";
@@ -917,40 +1148,49 @@ namespace ChargerVivo.CreateModels
                     lbl_i.Visible = false;
                     //lbl_h.Text = "Area Tolerance : ";
                     //lbl_i.Text = "Area Tolerance : ";
-                    nm_m.Value = tc.Threshold;
-                    nm_n.Value = tc.MatchScore;
-                    nm_o.Value = tc.AvgColor;
-                    nm_p.Value = tc.HeighTolerance;
-                    nm_q.Value = tc.WidthTolerance;
-                    nm_r.Value = tc.AreaTolerance;
-                    _CheckTextMatch_test_algo_object.Threshold = nm_m.Value;
-                    _CheckTextMatch_test_algo_object.MatchScore = nm_n.Value;
-                    _CheckTextMatch_test_algo_object.AvgColor = nm_o.Value;
-                    _CheckTextMatch_test_algo_object.HeighTolerance = nm_p.Value;
-                    _CheckTextMatch_test_algo_object.WidthTolerance = nm_q.Value;
-                    _CheckTextMatch_test_algo_object.AreaTolerance = nm_r.Value;
-                    _CheckTextMatch_test_algo_object.TemplateImagePath = tc.TemplateImagePath;
+
+                    enableDisableShiftParGroup(true);
                     tools_name = "CheckTextMatch";
 
 
-                    if (_live_test_feature == true)
+                    if (_selected_image != null)
                     {
 
-
-                        string json_path = GlobalItems.data_base_folder + @"\" + model_name + @"\_data_live.json";
+                        Console.WriteLine("Inside TextMatch");
+                        string json_path = GlobalItems.data_base_folder + @"\" + model_name + @"\_data.json";
                         string model_data = File.ReadAllText(json_path);
-                        string _base64 = ServiceUtils.bitmap_to_base_64_string(_selected_image);
-                        string image = _SalcomCpp.Get_template_match_data(_base64, "CheckTextMatch", model_data);
+                        // string _base64 = ServiceUtils.bitmap_to_base_64_string(_selected_image);//Get_template_match_data_bmp
+                        //string image = _SalcomCpp.Get_template_match_data(_base64, "CheckTextMatch", model_data);
+                        string image = _SalcomCpp.Get_template_match_data_bmp(_selected_image, "CheckTextMatch", model_data);
+                        Console.WriteLine("fnc called");
                         picboxOne.Image = ServiceUtils.Base64StringToBitmap(image);
                     }
                 }
             }
-            foreach (CheckClean tc in _model.CheckClean)
+            foreach (CheckClean tc in _Model_copy.CheckClean)
             {
                 if (tc.regionName.Equals(region_name))
                 {
                     if (tc.regionName.Equals(region_name))
-                    {
+                    {    //---------------
+                        _CheckClean_test_algo_object.TemplateImagePath = tc.TemplateImagePath;
+
+                        nm_m.Value = tc.Avg_color;
+                        nm_n.Value = tc.Step_Size;
+                        nm_o.Value = tc.HeighTolerance;
+                        nm_p.Value = tc.WidthTolerance;
+                        nm_q.Value = tc.AreaTolerance;
+                        nm_r.Value = tc.Threshold;
+
+
+
+                        _CheckClean_test_algo_object.Avg_color = nm_m.Value;
+                        _CheckClean_test_algo_object.Step_Size = nm_n.Value;
+                        _CheckClean_test_algo_object.HeighTolerance = nm_o.Value;
+                        _CheckClean_test_algo_object.WidthTolerance = nm_p.Value;
+                        _CheckClean_test_algo_object.AreaTolerance = nm_q.Value;
+                        _CheckClean_test_algo_object.Threshold = nm_r.Value;
+                        //-------------------
                         Bitmap img = null;
                         if (File.Exists(_model.template_image_path_bigger))
                         {
@@ -972,7 +1212,7 @@ namespace ChargerVivo.CreateModels
                                 (int)tc.PointAY,
                                 (int)(tc.PointBX),
                                 (int)tc.PointBY);
-                           // graphics.DrawRectangle(_redPen, _rectangle);
+                            // graphics.DrawRectangle(_redPen, _rectangle);
                         }
                         tools_name = "CheckClean";
                         txt_box_refstring.Visible = false;
@@ -991,7 +1231,7 @@ namespace ChargerVivo.CreateModels
                         lbl_d.Visible = true;
                         lbl_e.Visible = true;
                         lbl_f.Visible = true;
-                        lbl_g.Visible = true;
+                        lbl_g.Visible = false;
                         nm_m.Visible = true;
                         nm_n.Visible = true;
                         nm_o.Visible = true;
@@ -999,9 +1239,9 @@ namespace ChargerVivo.CreateModels
                         nm_q.Visible = true;
                         nm_r.Visible = true;
                         nm_m.ReadOnly = true;
-                        nm_m.Increment = 0;
+                        nm_m.Increment = 1;
                         nm_n.ReadOnly = false;
-                        //nm_n.Increment = 2;
+                        nm_n.Increment = 1;
                         nm_o.ReadOnly = false;
                         //nm_o.Increment = 2;
                         //nm_p.ReadOnly = true;
@@ -1011,23 +1251,112 @@ namespace ChargerVivo.CreateModels
                         lbl_i.Visible = false;
                         lbl_x.Visible = false;
                         lbl_rect_v.Location = new Point(163, 218);
+                        enableDisableShiftParGroup(false);
+                        //if (_selected_image != null)
+                        //    {
 
+                        //    Console.WriteLine("Inside Clean");
+                        //    string json_path = GlobalItems.data_base_folder + @"\" + model_name + @"\_data.json";
+                        //    string model_data = File.ReadAllText(json_path);
+                        //    //string _base64 = ServiceUtils.bitmap_to_base_64_string(_selected_image);
+                        //    //string image = _SalcomCpp.Get_template_match_data(_base64, "CheckClean", model_data);
+                        //    string image = _SalcomCpp.Get_template_match_data_bmp(_selected_image, "CheckClean", model_data);
+                        //    picboxOne.Image = ServiceUtils.Base64StringToBitmap(image);
 
-                        if (_live_test_feature == true)
-                        {
+                        //}
 
-
-                            string json_path = GlobalItems.data_base_folder + @"\" + model_name + @"\_data_live.json";
-                            string model_data = File.ReadAllText(json_path);
-                            string _base64 = ServiceUtils.bitmap_to_base_64_string(_selected_image);
-                            string image = _SalcomCpp.Get_template_match_data(_base64, "CheckClean", model_data);
-                            picboxOne.Image = ServiceUtils.Base64StringToBitmap(image);
-                        }
                     }
                 }
             }
-            btn_save_model.Enabled = true;
-        }
+            foreach (QrCodeReader tc in _Model_copy.QrCodeReader)
+            {
+                if (tc.regionName.Equals(region_name))
+                {
+                    Bitmap img = null;
+                    if (File.Exists(_model.template_image_path_bigger))
+                    {
+                        using (var bmpTemp = new Bitmap(_model.template_image_path_bigger))
+                        {
+                            img = new Bitmap(bmpTemp);
+                        }
+                        picboxOne.Image = img;
+                    }
+                    if (File.Exists(tc.TemplateImagePath))
+                    {
+                        using (var bmpTemp = new Bitmap(tc.TemplateImagePath))
+                        {
+                            img = new Bitmap(bmpTemp);
+                        }
+                        picCroppedPicture.Image = img;
+                    }
+                    enableDisableShiftParGroup(false);
+                    using (var graphics = Graphics.FromImage(img))
+                    {
+                        //Rectangle _rectangle = new Rectangle(
+                        //    (int)tc.PointAX + (int)_model.TemplateCoordinate.ElementAt(1).PointAX,
+                        //    (int)tc.PointAY + (int)_model.TemplateCoordinate.ElementAt(1).PointAY,
+                        //    (int)(tc.PointBX),
+                        //    (int)tc.PointBY);
+                        Rectangle _rectangle = new Rectangle(
+                            (int)tc.PointAX,
+                            (int)tc.PointAY,
+                            (int)(tc.PointBX),
+                            (int)tc.PointBY);
+
+                        // graphics.DrawRectangle(_redPen, _rectangle);
+                    }
+                    Console.WriteLine("QR code reader tool found  x  " + tc.PointAX.ToString() + "  y:" + tc.PointAY.ToString() + " width:" + tc.PointBX.ToString());
+                    tools_name = "QrCodeReader";
+                }
+            }
+            foreach (CheckPins.PinRegion pr in _model.checkPins.pinRegions)
+            {
+                if (pr.regionName.Equals(region_name))
+                {
+                    Bitmap img = null;
+                    if (File.Exists(_model.template_image_path_bigger))
+                    {
+                        using (var bmpTemp = new Bitmap(_model.template_image_path_bigger))
+                        {
+                            img = new Bitmap(bmpTemp);
+                        }
+                        picboxOne.Image = img;
+                    }
+                    if (File.Exists(pr.TemplateImagePath))
+                    {
+                        using (var bmpTemp = new Bitmap(pr.TemplateImagePath))
+                        {
+                            img = new Bitmap(bmpTemp);
+                        }
+                        picCroppedPicture.Image = img;
+                    }
+                    enableDisableShiftParGroup(false);
+                    using (var graphics = Graphics.FromImage(img))
+                    {
+                        //Rectangle _rectangle = new Rectangle(
+                        //    (int)tc.PointAX + (int)_model.TemplateCoordinate.ElementAt(1).PointAX,
+                        //    (int)tc.PointAY + (int)_model.TemplateCoordinate.ElementAt(1).PointAY,
+                        //    (int)(tc.PointBX),
+                        //    (int)tc.PointBY);
+                        Rectangle _rectangle = new Rectangle(
+                            (int)pr.PointX,
+                            (int)pr.PointY,
+                            (int)(pr.imageWidth),
+                            (int)pr.imageHeight);
+
+                        // graphics.DrawRectangle(_redPen, _rectangle);
+                    }
+                    tools_name = "CheckPins";
+                }
+
+            }
+            picboxOne.Refresh();
+            cropSource = (Bitmap)picboxOne.Image;
+            cb_test_image.Checked = true;
+            //  btn_save_model.Enabled = true;
+        } 
+
+        Bitmap cropSource;
         private void btn_delete_Click(object sender, EventArgs e)
         {
 
@@ -1143,7 +1472,7 @@ namespace ChargerVivo.CreateModels
             //lbl_original_image_path.Text = original_image_path;
             if (_default_image != null)
             {
-                _default_image.RotateFlip(RotateFlipType.Rotate270FlipNone);
+              //  _default_image.RotateFlip(RotateFlipType.Rotate270FlipNone);
             }
             // picboxOne.Image = _default_image;
             if (File.Exists(_model.TemplateImagePathSmaller))
@@ -1234,14 +1563,20 @@ namespace ChargerVivo.CreateModels
                 // cb_region_name.Items.Add(tc.regionName);
             }
             cb_region_name.Enabled = true;
+            if (cb_region_name.Items.Count > 0)
+                cb_region_name.SelectedIndex = 0;
             _once = true;
         }
         private void cb_check_text_match_CheckedChanged(object sender, EventArgs e)
         {
+            _model = _Model_copy;
             if (cb_check_text_match.Checked == true)
             {
+                
+                cb_test_image.Checked = false;
+                _live_test_feature = false;
                 is_add_new_region = true;
-                _save_new_tools = true;
+                //_save_new_tools = true;
                 cb_region_name.Text = "        select Region name";
                 tools_name = "CheckTextMatch";
                 cb_checkclean.Checked = false;
@@ -1268,8 +1603,17 @@ namespace ChargerVivo.CreateModels
                 nm_m.Visible = true;
                 nm_n.Visible = true;
                 nm_o.Visible = true;
-                nm_n.ReadOnly = true;
-                nm_n.Increment = 0;
+                //nm_n.ReadOnly = true;
+                //default vals 
+
+                nm_p.Value = 2;
+                nm_q.Visible = true;
+                nm_q.Value = 2;
+                nm_r.Visible = true;
+                nm_r.Value = 2;
+                //
+                nm_m.Increment = 1;
+                nm_n.Increment = 1;
                 nm_o.ReadOnly = true;
                 nm_o.Increment = 0;
                 nm_p.Visible = true;
@@ -1302,16 +1646,31 @@ namespace ChargerVivo.CreateModels
                 btm_add_new_region.Enabled = false;
 
 
+                enableDisableShiftParGroup(true);
 
-
+            }
+            else
+            {
+                cb_test_image.Enabled = true;
+                is_add_new_region = false;
+                enableDisableShiftParGroup(false);
+                //cb_test_image.Checked =;
             }
         }
         private void cb_checkclean_CheckedChanged(object sender, EventArgs e)
         {
+            _model = _Model_copy;
             if (cb_checkclean.Checked == true)
             {
+
+
+                cb_test_image.Checked = false;
+                _live_test_feature = false;
+
+
+
                 is_add_new_region = true;
-                _save_new_tools = true;
+                //_save_new_tools = true;
                 cb_region_name.Text = "        select Region name";
                 btm_add_new_region.Enabled = false;
                 tools_name = "CheckClean";
@@ -1331,18 +1690,29 @@ namespace ChargerVivo.CreateModels
                 lbl_d.Visible = true;
                 lbl_e.Visible = true;
                 lbl_f.Visible = true;
-                lbl_g.Visible = true;
+                lbl_g.Visible = false;
                 nm_m.Visible = true;
                 nm_n.Visible = true;
                 nm_o.Visible = true;
                 nm_p.Visible = true;
                 nm_q.Visible = true;
                 nm_r.Visible = true;
-                nm_m.ReadOnly = true;
-                nm_m.Increment = 0;
+                // nm_m.ReadOnly = true;
+                nm_m.Increment = 1;
                 nm_n.ReadOnly = false;
-                //nm_n.Increment = 2;
+                nm_n.Increment = 1;
                 nm_o.ReadOnly = false;
+
+                //default vals
+
+                nm_m.Value = 150;
+                nm_n.Value = 4;
+                nm_o.Value = 2;
+                nm_p.Value = 2;
+                nm_q.Value = 2;
+                nm_r.Value = 8;
+
+                //--
                 //nm_o.Increment = 2;
                 //nm_p.ReadOnly = true;
                 //nm_q.ReadOnly = true;
@@ -1361,6 +1731,11 @@ namespace ChargerVivo.CreateModels
                         picboxOne.Image = (Bitmap)bmp.Clone();
                     }
                 }//dddd 
+                enableDisableShiftParGroup(false);
+            }
+            else
+            {
+                enableDisableShiftParGroup(true);
             }
         }
         private void cb_region_name_KeyPress(object sender, KeyPressEventArgs e)
@@ -1391,6 +1766,10 @@ namespace ChargerVivo.CreateModels
                 {
                     cb_region_name.SelectedIndex = cb_region_name.SelectedIndex - 1;
                 }
+                else if (cb_region_name.SelectedIndex == 0)
+                {
+                    cb_region_name.SelectedIndex = cb_region_name.Items.Count - 1;
+                }
                 else
                     return;
             
@@ -1406,8 +1785,13 @@ namespace ChargerVivo.CreateModels
                 {
                     cb_region_name.SelectedIndex = cb_region_name.SelectedIndex + 1;
                 }
+        
+                else if (cb_region_name.SelectedIndex == cb_region_name.Items.Count - 1)
+                {
+                    cb_region_name.SelectedIndex = 0;
+                }
                 else
-                    return;
+                return;
 
 
             }
@@ -1426,49 +1810,49 @@ namespace ChargerVivo.CreateModels
                 MessageBoxButtons.OK, MessageBoxIcon.Information);
                 return;
             }
+            _model = _Model_copy;
 
+            // cb_region_name.Text = "---------";
+            //string region_name = cb_region_name.Text;
+            //for (int i = 0; i < _Model_copy.CheckTextMatch.Count(); i++)
+            //{
+            //    CheckTextMatch tc = _Model_copy.CheckTextMatch.ElementAt(i);
+            //    if (tc.regionName.Equals(region_name))
+            //    {
+            //        _Model_copy.CheckTextMatch.ElementAt(i).Threshold = nm_m.Value;
+            //        _Model_copy.CheckTextMatch.ElementAt(i).MatchScore = nm_n.Value;
+            //        _Model_copy.CheckTextMatch.ElementAt(i).AvgColor = nm_o.Value;
+            //        _Model_copy.CheckTextMatch.ElementAt(i).HeighTolerance = nm_p.Value;
+            //        _Model_copy.CheckTextMatch.ElementAt(i).WidthTolerance = nm_q.Value;
+            //        _Model_copy.CheckTextMatch.ElementAt(i).AreaTolerance = nm_r.Value;
 
-            cb_region_name.Text = "---------";
-            string region_name = cb_region_name.Text;
-            for (int i = 0; i < _model.CheckTextMatch.Count(); i++)
-            {
-                CheckTextMatch tc = _model.CheckTextMatch.ElementAt(i);
-                if (tc.regionName.Equals(region_name))
-                {
-                    _Model_copy.CheckTextMatch.ElementAt(i).Threshold = nm_m.Value;
-                    _Model_copy.CheckTextMatch.ElementAt(i).MatchScore = nm_n.Value;
-                    _Model_copy.CheckTextMatch.ElementAt(i).AvgColor = nm_o.Value;
-                    _Model_copy.CheckTextMatch.ElementAt(i).HeighTolerance = nm_p.Value;
-                    _Model_copy.CheckTextMatch.ElementAt(i).WidthTolerance = nm_q.Value;
-                    _Model_copy.CheckTextMatch.ElementAt(i).AreaTolerance = nm_r.Value;
-                  
-                    _Model_copy.CheckTextMatch.ElementAt(i).TemplateImagePath = _CheckTextMatch_test_algo_object.TemplateImagePath;
-                    if (_CheckTextMatch_test_algo_object.PointAX != 0)
-                    {
-                        _Model_copy.CheckTextMatch.ElementAt(i).PointAX = _CheckTextMatch_test_algo_object.PointAX;
-                        _Model_copy.CheckTextMatch.ElementAt(i).PointAY = _CheckTextMatch_test_algo_object.PointAY;
-                        _Model_copy.CheckTextMatch.ElementAt(i).PointBX = _CheckTextMatch_test_algo_object.PointBX;
-                        _Model_copy.CheckTextMatch.ElementAt(i).PointBY = _CheckTextMatch_test_algo_object.PointBY;
-                    }
-                    //  _Model_copy.CheckTextMatch.ElementAt(i).Threshold = _CheckTextMatch_test_algo_object.Threshold;
-                }
-            }
-            for (int i = 0; i < _model.CheckClean.Count(); i++)
-            {
-                CheckClean tc = _model.CheckClean.ElementAt(i);
-                if (tc.regionName.Equals(region_name))
-                {
-                    if (tc.regionName.Equals(region_name))
-                    {
-                        _Model_copy.CheckClean.ElementAt(i).Avg_color = nm_m.Value;
-                        _Model_copy.CheckClean.ElementAt(i).Step_Size = nm_n.Value;
-                        _Model_copy.CheckClean.ElementAt(i).HeighTolerance = nm_o.Value;
-                        _Model_copy.CheckClean.ElementAt(i).WidthTolerance = nm_p.Value;
-                        _Model_copy.CheckClean.ElementAt(i).AreaTolerance = nm_q.Value;
-                        _Model_copy.CheckClean.ElementAt(i).Threshold = nm_r.Value;
-                    }
-                }
-            }
+            //        _Model_copy.CheckTextMatch.ElementAt(i).TemplateImagePath = _CheckTextMatch_test_algo_object.TemplateImagePath;
+            //        if (_CheckTextMatch_test_algo_object.PointAX != 0)
+            //        {
+            //            _Model_copy.CheckTextMatch.ElementAt(i).PointAX = _CheckTextMatch_test_algo_object.PointAX;
+            //            _Model_copy.CheckTextMatch.ElementAt(i).PointAY = _CheckTextMatch_test_algo_object.PointAY;
+            //            _Model_copy.CheckTextMatch.ElementAt(i).PointBX = _CheckTextMatch_test_algo_object.PointBX;
+            //            _Model_copy.CheckTextMatch.ElementAt(i).PointBY = _CheckTextMatch_test_algo_object.PointBY;
+            //        }
+            //        //  _Model_copy.CheckTextMatch.ElementAt(i).Threshold = _CheckTextMatch_test_algo_object.Threshold;
+            //    }
+            //}
+            //for (int i = 0; i < _Model_copy.CheckClean.Count(); i++)
+            //{
+            //    CheckClean tc = _Model_copy.CheckClean.ElementAt(i);
+            //    if (tc.regionName.Equals(region_name))
+            //    {
+            //        if (tc.regionName.Equals(region_name))
+            //        {
+            //            _Model_copy.CheckClean.ElementAt(i).Avg_color = nm_m.Value;
+            //            _Model_copy.CheckClean.ElementAt(i).Step_Size = nm_n.Value;
+            //            _Model_copy.CheckClean.ElementAt(i).HeighTolerance = nm_o.Value;
+            //            _Model_copy.CheckClean.ElementAt(i).WidthTolerance = nm_p.Value;
+            //            _Model_copy.CheckClean.ElementAt(i).AreaTolerance = nm_q.Value;
+            //            _Model_copy.CheckClean.ElementAt(i).Threshold = nm_r.Value;
+            //        }
+            //    }
+            //}
 
 
             string json_path = GlobalItems.data_base_folder + @"\" + model_name + @"\_data_live.json";
@@ -1484,7 +1868,9 @@ namespace ChargerVivo.CreateModels
             {
                 string model_data = File.ReadAllText(json_path);
                 _model = JsonConvert.DeserializeObject<Modal>(model_data);
-                _SalcomCpp.load_template(model_data);
+                ServiceUtils.Log("");
+               // _SalcomCpp.load_template(model_data);
+                ServiceUtils.Log("");
             }
             else
             {
@@ -1492,6 +1878,8 @@ namespace ChargerVivo.CreateModels
                    MessageBoxButtons.OK, MessageBoxIcon.Information);
                 return;
             }
+            string json_model = JsonConvert.SerializeObject(_Model_copy, Formatting.Indented);
+            _SalcomCpp.load_template(json_model);
             OpenFileDialog openFileDialog1 = new OpenFileDialog
             {
                 InitialDirectory = @"D:\Images",
@@ -1509,8 +1897,8 @@ namespace ChargerVivo.CreateModels
             {
                 using (var bmpTemp = new Bitmap(openFileDialog1.FileName))
                 {
-                    _selected_image = new Bitmap(bmpTemp);
-                    _selected_image.RotateFlip(RotateFlipType.Rotate270FlipNone);
+                    _selected_image = bmpTemp.Clone(new Rectangle(0,0,bmpTemp.Width, bmpTemp.Height), System.Drawing.Imaging.PixelFormat.Format24bppRgb);
+                  //  _selected_image.RotateFlip(RotateFlipType.Rotate270FlipNone);
 
 
                     Bitmap bm24bit = new Bitmap(bmpTemp.Width, bmpTemp.Height, System.Drawing.Imaging.PixelFormat.Format24bppRgb);
@@ -1523,27 +1911,26 @@ namespace ChargerVivo.CreateModels
                     //bm24bit.Dispose();
 
 
+                    testOnImage();
+
+                    //commented because later image saved rotated 
+                    //  bm24bit.RotateFlip(RotateFlipType.Rotate270FlipNone);
 
 
-
-                    bm24bit.RotateFlip(RotateFlipType.Rotate270FlipNone);
-
-
-
-
-                    string result = _SalcomCpp.ProcessImage(bm24bit);
-                    ResultModel _ResultModel = JsonConvert.DeserializeObject<ResultModel>(result);
-                    //if (_ResultModel.final_result.Equals("OK"))
-                    //{
-                    //    label4.Text = " OK ";
-                    //}
-                    //else
-                    //{
-                    //    label4.Text = " NG ";
-                    //}
-
-
-                    picboxOne.Image = EditModelApp.Service.resizeImage(bm24bit, bm24bit.Width / 2, bm24bit.Height / 2);
+                    //Console.WriteLine(" sending image Processed 111");
+                    //string result = _SalcomCpp.ProcessImageTest(bm24bit);
+                    ////ResultModel _ResultModel = JsonConvert.DeserializeObject<ResultModel>(result);
+                    ////if (_ResultModel.final_result.Equals("OK"))
+                    ////{
+                    ////    label4.Text = " OK ";
+                    ////}
+                    ////else
+                    ////{
+                    ////    label4.Text = " NG ";
+                    ////}
+                    //picboxOne.Image = ServiceUtils.Base64StringToBitmap(result);
+                    //Console.WriteLine("image Processed 111");
+                    //picboxOne.Image = EditModelApp.Service.resizeImage(bm24bit, bm24bit.Width / 2, bm24bit.Height / 2);
                 }
             }
             else
@@ -1559,22 +1946,350 @@ namespace ChargerVivo.CreateModels
             if (cb_test_image.Checked)
             {
 
-                _save_new_tools = true;
+                _save_new_tools = false;
                 _live_test_feature = true;
-                cb_test_image.Enabled = true;
-                btn_test_algo.Enabled = false;
-                btn_save_model.Enabled = false;
-
+                //cb_test_image.Enabled = true;
+                //btn_test_algo.Enabled = false;
+               // btn_save_model.Enabled = false;
+                btn_select_image_for_testing.Enabled = true;
 
             }
             else
             {
 
                 _live_test_feature = false;
-                cb_test_image.Enabled = false;
-                btn_test_algo.Enabled = true;
-                btn_save_model.Enabled = true;
+               // cb_test_image.Enabled = false;
+               // btn_test_algo.Enabled = true;
+               // btn_save_model.Enabled = true;
+                btn_select_image_for_testing.Enabled = false;
             }
+        }
+
+        private void button1_Click(object sender, EventArgs e)
+        {
+            _model = _Model_copy;
+
+            if (cb_test_image.Checked==false)
+            {
+                MessageBox.Show("Please Select The Image " + " . ", "Alert ?",
+                MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
+                _save_new_tools = false;
+            #region test_algo
+            if (_save_new_tools == true)
+            {
+                //InputDialog dialog = new InputDialog("Region Input Dialog  ", " Region Name ", "  ");
+                //string region_name_ = DateTime.Now.ToString("yyyy-MM-ddTHH:mm:ss");
+                //if (dialog.ShowDialog() == DialogResult.OK)
+                //{
+                //    region_name_ = dialog.ResultText;
+                //}
+                if (tools_name.Equals("CheckTextMatch"))
+                {
+                    _CheckTextMatch_test_algo_object.Threshold = nm_m.Value;
+                    _CheckTextMatch_test_algo_object.MatchScore = nm_n.Value;
+                    _CheckTextMatch_test_algo_object.AvgColor = nm_o.Value;
+                    _CheckTextMatch_test_algo_object.HeighTolerance = nm_p.Value;
+                    _CheckTextMatch_test_algo_object.WidthTolerance = nm_q.Value;
+                    _CheckTextMatch_test_algo_object.AreaTolerance = nm_r.Value;
+                    _CheckTextMatch_test_algo_object.shiftXTol = nudHshiftTol.Value;
+                    _CheckTextMatch_test_algo_object.shiftYTol = nudVshiftTol.Value;
+                    _CheckTextMatch_test_algo_object.fontHeightTol = nudHeightTol.Value;
+                    _CheckTextMatch_test_algo_object.fontWidthTol =nudWidthTol .Value;
+                    _CheckTextMatch_test_algo_object.regionName = "Region_" + (_Model_copy.CheckTextMatch.Count() + 1);
+                    _Model_copy.CheckTextMatch.Add(_CheckTextMatch_test_algo_object);
+                }
+                if (tools_name.Equals("CheckClean"))
+                {
+                    _CheckClean_test_algo_object.Avg_color = nm_m.Value;
+                    _CheckClean_test_algo_object.Step_Size = nm_n.Value;
+                    _CheckClean_test_algo_object.HeighTolerance = nm_o.Value;
+                    _CheckClean_test_algo_object.WidthTolerance = nm_p.Value;
+                    _CheckClean_test_algo_object.AreaTolerance = nm_q.Value;
+                    _CheckClean_test_algo_object.Threshold = nm_r.Value;
+                    _CheckClean_test_algo_object.regionName = "Region_" + (_Model_copy.CheckClean.Count() + 1);
+                    //_Model_copy.CheckTextMatch.Add(_CheckTextMatch_test_algo_object);
+                    _Model_copy.CheckClean.Add(_CheckClean_test_algo_object);
+                }
+            }// if (_save_new_tools == true)
+            else
+            {
+                string region_name = cb_region_name.Text;
+                for (int i = 0; i < _model.CheckTextMatch.Count(); i++)
+                {
+                    CheckTextMatch tc = _model.CheckTextMatch.ElementAt(i);
+                    if (tc.regionName.Equals(region_name))
+                    {
+                        _Model_copy.CheckTextMatch.ElementAt(i).Threshold = nm_m.Value;
+                        _Model_copy.CheckTextMatch.ElementAt(i).MatchScore = nm_n.Value;
+                        _Model_copy.CheckTextMatch.ElementAt(i).AvgColor = nm_o.Value;
+                        _Model_copy.CheckTextMatch.ElementAt(i).HeighTolerance = nm_p.Value;
+                        _Model_copy.CheckTextMatch.ElementAt(i).WidthTolerance = nm_q.Value;
+                        _Model_copy.CheckTextMatch.ElementAt(i).AreaTolerance = nm_r.Value;
+                        _Model_copy.CheckTextMatch.ElementAt(i).shiftXTol = nudHshiftTol.Value;
+                        _Model_copy.CheckTextMatch.ElementAt(i).shiftYTol = nudVshiftTol.Value;
+                        _Model_copy.CheckTextMatch.ElementAt(i).fontHeightTol = nudHeightTol.Value;
+                        _Model_copy.CheckTextMatch.ElementAt(i).fontWidthTol = nudWidthTol.Value;
+                        _Model_copy.CheckTextMatch.ElementAt(i).TemplateImagePath = _CheckTextMatch_test_algo_object.TemplateImagePath;
+                        if (_CheckTextMatch_test_algo_object.PointAX != 0)
+                        {
+                            _Model_copy.CheckTextMatch.ElementAt(i).PointAX = _CheckTextMatch_test_algo_object.PointAX;
+                            _Model_copy.CheckTextMatch.ElementAt(i).PointAY = _CheckTextMatch_test_algo_object.PointAY;
+                            _Model_copy.CheckTextMatch.ElementAt(i).PointBX = _CheckTextMatch_test_algo_object.PointBX;
+                            _Model_copy.CheckTextMatch.ElementAt(i).PointBY = _CheckTextMatch_test_algo_object.PointBY;
+                        }
+                    }
+                }
+                for (int i = 0; i < _model.CheckClean.Count(); i++)
+                {
+                    CheckClean tc = _model.CheckClean.ElementAt(i);
+                    if (tc.regionName.Equals(region_name))
+                    {
+                        if (tc.regionName.Equals(region_name))
+                        {
+                            _Model_copy.CheckClean.ElementAt(i).Avg_color = nm_m.Value;
+                            _Model_copy.CheckClean.ElementAt(i).Step_Size = nm_n.Value;
+                            _Model_copy.CheckClean.ElementAt(i).HeighTolerance = nm_o.Value;
+                            _Model_copy.CheckClean.ElementAt(i).WidthTolerance = nm_p.Value;
+                            _Model_copy.CheckClean.ElementAt(i).AreaTolerance = nm_q.Value;
+                            _Model_copy.CheckClean.ElementAt(i).Threshold = nm_r.Value;
+                            _Model_copy.CheckClean.ElementAt(i).TemplateImagePath = _CheckClean_test_algo_object.TemplateImagePath;
+                        }
+                    }
+                }
+            }
+            //string json_path = GlobalItems.data_base_folder + @"\" + model_name + @"\_data.json";
+            //string json = JsonConvert.SerializeObject(_Model_copy, Formatting.Indented);
+            //File.WriteAllText(json_path, json);
+            //int cmbSelIndex = cb_region_name.SelectedIndex;
+            //after_upadte();
+            //cb_region_name.SelectedIndex = cmbSelIndex;
+           // btn_save_model.Enabled = false;
+            #endregion test_algo
+            #region    update_model
+            //if (_save_new_tools == true)
+            //{
+            //    if (tools_name.Equals("CheckTextMatch"))
+            //    {
+            //        _CheckTextMatch_test_algo_object.Threshold = nm_m.Value;
+            //        _CheckTextMatch_test_algo_object.MatchScore = nm_n.Value;
+            //        _CheckTextMatch_test_algo_object.AvgColor = nm_o.Value;
+            //        _CheckTextMatch_test_algo_object.HeighTolerance = nm_p.Value;
+            //        _CheckTextMatch_test_algo_object.WidthTolerance = nm_q.Value;
+            //        _CheckTextMatch_test_algo_object.AreaTolerance = nm_r.Value;
+            //        _CheckTextMatch_test_algo_object.regionName = "Region_" + (_Model_copy.CheckTextMatch.Count() + 1);
+            //        _Model_copy.CheckTextMatch.Add(_CheckTextMatch_test_algo_object);
+            //    }
+            //    if (tools_name.Equals("CheckClean"))
+            //    {
+            //        _CheckClean_test_algo_object.Avg_color = nm_m.Value;
+            //        _CheckClean_test_algo_object.Step_Size = nm_n.Value;
+            //        _CheckClean_test_algo_object.HeighTolerance = nm_o.Value;
+            //        _CheckClean_test_algo_object.WidthTolerance = nm_p.Value;
+            //        _CheckClean_test_algo_object.AreaTolerance = nm_q.Value;
+            //        _CheckClean_test_algo_object.Threshold = nm_r.Value;
+            //        _CheckClean_test_algo_object.regionName = "Region_" + (_Model_copy.CheckClean.Count() + 1); 
+            //        //_Model_copy.CheckTextMatch.Add(_CheckTextMatch_test_algo_object);
+            //        _Model_copy.CheckClean.Add(_CheckClean_test_algo_object);
+            //    }
+            //}// if (_save_new_tools == true)
+            //else
+            //{
+            //    string region_name = cb_region_name.Text;
+            //    for (int i = 0; i < _model.CheckTextMatch.Count(); i++)
+            //    {
+            //        CheckTextMatch tc = _model.CheckTextMatch.ElementAt(i);
+            //        if (tc.regionName.Equals(region_name))
+            //        {
+            //            _Model_copy.CheckTextMatch.ElementAt(i).Threshold = nm_m.Value;
+            //            _Model_copy.CheckTextMatch.ElementAt(i).MatchScore = nm_n.Value;
+            //            _Model_copy.CheckTextMatch.ElementAt(i).AvgColor = nm_o.Value;
+            //            _Model_copy.CheckTextMatch.ElementAt(i).HeighTolerance = nm_p.Value;
+            //            _Model_copy.CheckTextMatch.ElementAt(i).WidthTolerance = nm_q.Value;
+            //            _Model_copy.CheckTextMatch.ElementAt(i).AreaTolerance = nm_r.Value;
+            //            _Model_copy.CheckTextMatch.ElementAt(i).TemplateImagePath = _CheckTextMatch_test_algo_object.TemplateImagePath;
+            //            if (_CheckTextMatch_test_algo_object.PointAX != 0)
+            //            {
+            //                _Model_copy.CheckTextMatch.ElementAt(i).PointAX = _CheckTextMatch_test_algo_object.PointAX;
+            //                _Model_copy.CheckTextMatch.ElementAt(i).PointAY = _CheckTextMatch_test_algo_object.PointAY;
+            //                _Model_copy.CheckTextMatch.ElementAt(i).PointBX = _CheckTextMatch_test_algo_object.PointBX;
+            //                _Model_copy.CheckTextMatch.ElementAt(i).PointBY = _CheckTextMatch_test_algo_object.PointBY;
+            //            }
+            //            //  _Model_copy.CheckTextMatch.ElementAt(i).Threshold = _CheckTextMatch_test_algo_object.Threshold;
+            //        }
+            //    }
+            //    for (int i = 0; i < _model.CheckClean.Count(); i++)
+            //    {
+            //        CheckClean tc = _model.CheckClean.ElementAt(i);
+            //        if (tc.regionName.Equals(region_name))
+            //        {
+            //            if (tc.regionName.Equals(region_name))
+            //            {
+            //                _Model_copy.CheckClean.ElementAt(i).Avg_color = nm_m.Value;
+            //                _Model_copy.CheckClean.ElementAt(i).Step_Size = nm_n.Value;
+            //                _Model_copy.CheckClean.ElementAt(i).HeighTolerance = nm_o.Value;
+            //                _Model_copy.CheckClean.ElementAt(i).WidthTolerance = nm_p.Value;
+            //                _Model_copy.CheckClean.ElementAt(i).AreaTolerance = nm_q.Value;
+            //                _Model_copy.CheckClean.ElementAt(i).Threshold = nm_r.Value;
+            //            }
+            //        }
+            //    }
+            //}
+           // btn_save_model.Enabled = false;
+            #endregion 
+            string json_model = JsonConvert.SerializeObject(_Model_copy, Formatting.Indented);
+            _SalcomCpp.load_template(json_model);
+    //        Bitmap bm24bit = new Bitmap(_selected_image.Width, _selected_image.Height, System.Drawing.Imaging.PixelFormat.Format24bppRgb);
+            Console.WriteLine("image test button ");
+            //Graphics g = Graphics.FromImage(bm24bit);
+            //g.DrawImage(_selected_image, 0, 0, _selected_image.Width, _selected_image.Height);
+            //string result = _SalcomCpp.ProcessImageTest(bm24bit);
+            //picboxOne.Image = ServiceUtils.Base64StringToBitmap(result);
+            testOnImage();
+            // picboxOne.Image = EditModelApp.Service.resizeImage(bm24bit, bm24bit.Width / 2, bm24bit.Height / 2);
+            //picboxOne.Refresh();
+
+
+        }
+
+        private void testOnImage()
+        {if (_selected_image != null)
+            {
+                resultImageonDisplay = true;
+                Console.WriteLine("testOnImage call");
+                picboxOne.Image = _selected_image;
+                string result = _SalcomCpp.ProcessImageTest(_selected_image);
+                picboxOne.Image = ServiceUtils.Base64StringToBitmap(result);
+                // picboxOne.Image = EditModelApp.Service.resizeImage(bm24bit, bm24bit.Width / 2, bm24bit.Height / 2);
+                picboxOne.Refresh();
+            }
+        }
+        private void nm_p_ValueChanged(object sender, EventArgs e)
+        {
+            if (cb_test_image.Checked == true)
+                button1_Click(sender, e);
+        }
+
+        private void nm_q_ValueChanged(object sender, EventArgs e)
+        {if(cb_test_image.Checked==true)
+            button1_Click(sender, e);
+        }
+
+        private void nm_r_ValueChanged(object sender, EventArgs e)
+        {
+            if (cb_test_image.Checked == true)
+                button1_Click(sender, e);
+        }
+
+        private void nm_m_ValueChanged(object sender, EventArgs e)
+        {
+            if (cb_test_image.Checked == true)
+                button1_Click(sender, e);
+        }
+
+        private void nm_n_ValueChanged(object sender, EventArgs e)
+        {
+            if (cb_test_image.Checked == true)
+                button1_Click(sender, e);
+        }
+
+        private void numericUpDown4_ValueChanged(object sender, EventArgs e)
+        {
+            if (cb_test_image.Checked == true)
+                button1_Click(sender, e);
+        }
+
+        private void nudHshiftTol_ValueChanged(object sender, EventArgs e)
+        {
+            if (cb_test_image.Checked == true)
+                button1_Click(sender, e);
+        }
+
+        private void nudWidthTol_ValueChanged(object sender, EventArgs e)
+        {
+            if (cb_test_image.Checked == true)
+                button1_Click(sender, e);
+        }
+
+        private void nudVshiftTol_ValueChanged(object sender, EventArgs e)
+        {
+            if (cb_test_image.Checked == true)
+                button1_Click(sender, e);
+        }
+
+        bool resultImageonDisplay = false;
+        private void btnSelectROI_Click(object sender, EventArgs e)
+        {
+            resultImageonDisplay = false;
+            string region_name = cb_region_name.Text;
+            foreach (CheckTextMatch tc in _Model_copy.CheckTextMatch)
+            {
+                if (tc.regionName.Equals(region_name))
+                {
+                    Bitmap img = null;
+                    if (File.Exists(_model.TemplateImagePathSmaller))
+                    {
+                        using (var bmpTemp = new Bitmap(_model.TemplateImagePathSmaller))
+                        {
+                            img = new Bitmap(bmpTemp);
+                        }
+                        picboxOne.Image = img;
+                    }
+                    if (_selected_image != null)
+                    {
+
+                        Console.WriteLine("Inside TextMatch");
+                        string json_path = GlobalItems.data_base_folder + @"\" + model_name + @"\_data.json";
+                        string model_data = File.ReadAllText(json_path);
+                        // string _base64 = ServiceUtils.bitmap_to_base_64_string(_selected_image);//Get_template_match_data_bmp
+                        //string image = _SalcomCpp.Get_template_match_data(_base64, "CheckTextMatch", model_data);
+                        string image = _SalcomCpp.Get_template_match_data_bmp(_selected_image, "CheckTextMatch", model_data);
+                        Console.WriteLine("fnc called");
+                        picboxOne.Image = ServiceUtils.Base64StringToBitmap(image);
+                    }
+
+                }
+            }
+            foreach (CheckClean tc in _Model_copy.CheckClean)
+            {
+                if (tc.regionName.Equals(region_name))
+                {
+         //---------------
+         
+
+                        Bitmap img = null;
+                        if (File.Exists(_model.template_image_path_bigger))
+                        {
+                            using (var bmpTemp = new Bitmap(_model.template_image_path_bigger))
+                            {
+                                img = new Bitmap(bmpTemp);
+                            }
+                            picboxOne.Image = img;
+                        }
+
+
+                    
+                }
+            }
+            foreach (QrCodeReader tc in _Model_copy.QrCodeReader)
+            {
+                if (tc.regionName.Equals(region_name))
+                {
+                    Bitmap img = null;
+                    if (File.Exists(_model.template_image_path_bigger))
+                    {
+                        using (var bmpTemp = new Bitmap(_model.template_image_path_bigger))
+                        {
+                            img = new Bitmap(bmpTemp);
+                        }
+                        picboxOne.Image = img;
+                    }
+                  
+                }
+            }
+            picboxOne.Refresh();
+            cropSource = (Bitmap)picboxOne.Image;
         }
     }
 }
